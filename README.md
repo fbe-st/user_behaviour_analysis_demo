@@ -1,7 +1,7 @@
 # User Behaviour Analysis Demo
 
 ## DESCRIPTION
-We want to be deliver the results from our different analysis on User Behaviour, in an interactive and fun way for the audience. For this reason we developed a Shiny dashboard which allows to slice results by clients, selectively aggregate groups of clients, or remove specific clients which might bias/distort the results. Additionally, for one of the time-line analysis the range of the time line can also be modified by the user in order to focus the analysis from a few days to up to six months.
+We want to deliver the results from our different analysis on User Behaviour, in an interactive and fun way for our internal stakeholders and audience. For this reason we developed a Shiny dashboard which allows to slice results by clients, selectively aggregate groups of clients, or remove specific clients which might bias/distort the results. Additionally, for one of the time-line analysis the range of the time line can also be modified in order to focus the analysis from a few days to up to six months.
 
 ## RESULTS & INSIGHTS
 The current demo includes the following analyses:
@@ -9,16 +9,16 @@ The current demo includes the following analyses:
 ### Action Counts 
 
 - Analyses "how many" users executed at least once one of the following actions, organised in three groups of pseudo user journeys:
-  1. Actions of Onboarding: 
+1. Actions of Onboarding: 
    - User Creation
    - First Login 
    - First Guide 
-  2. Actions of Work Alignment:
+2. Actions of Work Alignment:
    - First Project 
    - First Story (_also used interchangeably as a task_) 
    - First Activity 
    - First Outcome
-  3. Actions of Work Execution:
+3. Actions of Work Execution:
    - First Task
    - First Meeting
    - First Decision
