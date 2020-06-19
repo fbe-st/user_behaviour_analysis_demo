@@ -2,7 +2,7 @@ library(shiny)
 library(shinyWidgets)
 library(tidyverse)
 library(ggplot2)
-# library(quanteda)
+library(viridis)
 library(visNetwork)
 library(ggalluvial)
 
@@ -14,6 +14,8 @@ client_names <- readRDS(file = "../WIP/client_names.RDS")
 tokens_obj <- readRDS(file = "../WIP/tokens_obj_collocations_seq_analysis.RDS")
 vis_nodes <- readRDS(file = "../WIP/vis_nodes_collocation_collocations_seq_analysis.RDS")
 vis_edges <- readRDS(file = "../WIP/vis_edges_collocation_collocations_seq_analysis.RDS")
+leg_nodes <- readRDS(file = "../WIP/vis_nodes_legend.RDS")
+leg_edges <- readRDS(file = "../WIP/vis_edges_legend.RDS")
 p_alluvial <- readRDS(file = "../WIP/p_alluvial_all_users.RDS")
 user_grid_test <- readRDS(file = "../WIP/user_grid_activity_status.RDS")
 user_client_table <- readRDS(file = "../WIP/user_client_table.RDS")
@@ -395,8 +397,9 @@ server <- function(input, output, session) {
   #############################
   
   get_global_seqs <- eventReactive(input$load_global_seqs, {
-    visNetwork(vis_nodes, vis_edges, 
+    visNetwork(vis_nodes, vis_edges,  width = 1800, height = 1200,
                main = paste0("User Action Sequences - All Clients")) %>%
+      visLegend(useGroups = FALSE, addNodes = leg_nodes, addEdges = leg_edges) %>% 
       visIgraphLayout() %>%
       visEdges(smooth = FALSE) %>%
       visExport() %>%
@@ -406,85 +409,85 @@ server <- function(input, output, session) {
   })
   
   
-  extract_bespoke_collocations <- eventReactive(input$extract_collocations, {
-    
-    tokens_obj_filtered <- tokens_obj %>% 
-      tokens_subset(client_name %in% selected_instances_seqs) ##### CHECK IF IT WORKS FINE !!!!!
-    #browser()
-    
-    mwe_obj <- textstat_collocations(x = tokens_obj_filtered, 
-                                     size = c(2:input$seq_length), 
-                                     min_count = input$min_count_action) %>%
-      mutate(collocation = str_replace_all(string = collocation, pattern = " ", replacement = " -> ")) %>% 
-      mutate(unique_events = collocation %>% 
-               str_split(pattern = " -> ") %>% 
-               lapply(., function(x) unique(x)) %>% 
-               lapply(., function(x) length(x)) %>% 
-               unlist()) %>% 
-      arrange(desc(length), desc(count), count_nested, unique_events) %>% 
-      filter(count > input$min_count_collocation)
-  })
-  
-  
-  build_edge_list <- reactive({
-    
-    temp_mwe_analysis <- extract_bespoke_collocations()
-    
-    events_edge_list <- tibble()
-    for (i in 1:length(temp_mwe_analysis$collocation)) {
-      temp_rule <- temp_mwe_analysis$collocation[i]
-      temp_steps <- str_split(temp_rule, pattern = " -> ") %>% 
-        unlist()
-      temp_freq <- temp_mwe_analysis$count[i]
-      temp_nested <- temp_mwe_analysis$count_nested[i]
-      temp_length <- temp_mwe_analysis$length[i]
-      temp_lambda <- temp_mwe_analysis$lambda[i]
-      temp_ztest <- temp_mwe_analysis$z[i]
-      temp_unique <- temp_mwe_analysis$unique_events[i]
-      for (j in 1:length(temp_steps) - 1) {
-        temp_from <- temp_steps[j]
-        temp_to <- temp_steps[j + 1]
-        temp_edge <- tibble(from = temp_from, 
-                            to = temp_to, 
-                            freq = temp_freq,
-                            nested = temp_nested,
-                            length = temp_length,
-                            lambda = temp_lambda,
-                            ztest = temp_ztest,
-                            unique = temp_unique)
-        events_edge_list <- bind_rows(events_edge_list, temp_edge)
-      }
-    }
-  })
-  
-  
-  build_graph <- reactive({
-    
-    events_edge_list <- build_edge_list()
-    
-    g <- igraph::graph_from_data_frame(events_edge_list, directed = TRUE)
-    deg_in <- igraph::degree(g, mode = "in")
-    deg_out <- igraph::degree(g, mode = "out")
-    
-    vis_nodes <- data.frame(id=igraph::V(g)$name, label=igraph::V(g)$name, stringsAsFactors = FALSE)
-    vis_nodes$size <- if_else(igraph::V(g)$name %in% unique(events_edge_list$from), 30, 10) + log(deg_out)
-    vis_nodes$color.background <- heat.colors(length(levels(factor(deg_out))), alpha = 0.75, rev = TRUE)[factor(deg_out)]
-    vis_nodes$color.border <- "#E6E6E6"
-    vis_nodes$color.highlight.background <- "orange"
-    vis_nodes$color.highlight.border <- "darkred"
-    
-    vis_edges <- data.frame(from=events_edge_list$from, to=events_edge_list$to)
-    vis_edges$arrows <- "to"
-    
-    visNetwork(vis_nodes, vis_edges, 
-               main = paste0("User Action Sequences - ",  )) %>%
-      visIgraphLayout() %>%
-      visEdges(smooth = FALSE) %>%
-      visExport() %>%
-      visOptions(highlightNearest = TRUE,
-                 nodesIdSelection = list(enabled = TRUE))
-    
-  })
+  # extract_bespoke_collocations <- eventReactive(input$extract_collocations, {
+  #   
+  #   tokens_obj_filtered <- tokens_obj %>% 
+  #     tokens_subset(client_name %in% selected_instances_seqs) ##### CHECK IF IT WORKS FINE !!!!!
+  #   #browser()
+  #   
+  #   mwe_obj <- textstat_collocations(x = tokens_obj_filtered, 
+  #                                    size = c(2:input$seq_length), 
+  #                                    min_count = input$min_count_action) %>%
+  #     mutate(collocation = str_replace_all(string = collocation, pattern = " ", replacement = " -> ")) %>% 
+  #     mutate(unique_events = collocation %>% 
+  #              str_split(pattern = " -> ") %>% 
+  #              lapply(., function(x) unique(x)) %>% 
+  #              lapply(., function(x) length(x)) %>% 
+  #              unlist()) %>% 
+  #     arrange(desc(length), desc(count), count_nested, unique_events) %>% 
+  #     filter(count > input$min_count_collocation)
+  # })
+  # 
+  # 
+  # build_edge_list <- reactive({
+  #   
+  #   temp_mwe_analysis <- extract_bespoke_collocations()
+  #   
+  #   events_edge_list <- tibble()
+  #   for (i in 1:length(temp_mwe_analysis$collocation)) {
+  #     temp_rule <- temp_mwe_analysis$collocation[i]
+  #     temp_steps <- str_split(temp_rule, pattern = " -> ") %>% 
+  #       unlist()
+  #     temp_freq <- temp_mwe_analysis$count[i]
+  #     temp_nested <- temp_mwe_analysis$count_nested[i]
+  #     temp_length <- temp_mwe_analysis$length[i]
+  #     temp_lambda <- temp_mwe_analysis$lambda[i]
+  #     temp_ztest <- temp_mwe_analysis$z[i]
+  #     temp_unique <- temp_mwe_analysis$unique_events[i]
+  #     for (j in 1:length(temp_steps) - 1) {
+  #       temp_from <- temp_steps[j]
+  #       temp_to <- temp_steps[j + 1]
+  #       temp_edge <- tibble(from = temp_from, 
+  #                           to = temp_to, 
+  #                           freq = temp_freq,
+  #                           nested = temp_nested,
+  #                           length = temp_length,
+  #                           lambda = temp_lambda,
+  #                           ztest = temp_ztest,
+  #                           unique = temp_unique)
+  #       events_edge_list <- bind_rows(events_edge_list, temp_edge)
+  #     }
+  #   }
+  # })
+  # 
+  # 
+  # build_graph <- reactive({
+  #   
+  #   events_edge_list <- build_edge_list()
+  #   
+  #   g <- igraph::graph_from_data_frame(events_edge_list, directed = TRUE)
+  #   deg_in <- igraph::degree(g, mode = "in")
+  #   deg_out <- igraph::degree(g, mode = "out")
+  #   
+  #   vis_nodes <- data.frame(id=igraph::V(g)$name, label=igraph::V(g)$name, stringsAsFactors = FALSE)
+  #   vis_nodes$size <- if_else(igraph::V(g)$name %in% unique(events_edge_list$from), 30, 10) + log(deg_out)
+  #   vis_nodes$color.background <- heat.colors(length(levels(factor(deg_out))), alpha = 0.75, rev = TRUE)[factor(deg_out)]
+  #   vis_nodes$color.border <- "#E6E6E6"
+  #   vis_nodes$color.highlight.background <- "orange"
+  #   vis_nodes$color.highlight.border <- "darkred"
+  #   
+  #   vis_edges <- data.frame(from=events_edge_list$from, to=events_edge_list$to)
+  #   vis_edges$arrows <- "to"
+  #   
+  #   visNetwork(vis_nodes, vis_edges, 
+  #              main = paste0("User Action Sequences - ",  )) %>%
+  #     visIgraphLayout() %>%
+  #     visEdges(smooth = FALSE) %>%
+  #     visExport() %>%
+  #     visOptions(highlightNearest = TRUE,
+  #                nodesIdSelection = list(enabled = TRUE))
+  #   
+  # })
   
   output$vis_seqs <- renderVisNetwork({
     get_global_seqs()
